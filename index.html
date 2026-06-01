@@ -397,9 +397,16 @@ function dbRequest(method,path,data,extraHeaders={}){
     const headers=dbHeaders(extraHeaders);
     Object.keys(headers).forEach(k=>xhr.setRequestHeader(k,headers[k]));
     xhr.onload=()=>{
-      if(xhr.status<200||xhr.status>=300){reject(new Error('HTTP '+xhr.status));return;}
       let body=null;
       try{body=xhr.responseText?JSON.parse(xhr.responseText):null;}catch(e){body=null;}
+      if(xhr.status<200||xhr.status>=300){
+        const error=new Error((body&&body.message)||('HTTP '+xhr.status));
+        error.status=xhr.status;
+        error.code=body&&body.code;
+        error.body=body;
+        reject(error);
+        return;
+      }
       resolve(body);
     };
     xhr.onerror=()=>reject(new Error('network failed'));
@@ -446,10 +453,24 @@ async function fetchLatestRate(){
   }
 }
 
-function setDbStatus(text,kind='idle'){
+function setDbStatus(text,kind='idle',detail=''){
   $('db-status-text').textContent=text;
   $('db-dot').className='status-dot'+(kind==='on'?' on':kind==='err'?' err':'');
+  $('db-status').title=detail||text;
   $('foot').textContent=dbReady()?'資料同步至 Supabase':'資料儲存於本機瀏覽器';
+}
+
+function dbErrorLabel(error){
+  const text=((error&&error.message)||'').toLowerCase();
+  if(error&&error.status===404||error&&error.code==='42P01'||text.includes('does not exist')||text.includes('schema cache')){
+    return '未建表';
+  }
+  if(error&&(error.status===401||error.status===403)||text.includes('permission denied')||text.includes('violates row-level security')){
+    return '權限錯誤';
+  }
+  if(error&&error.status===409)return '資料衝突';
+  if(text.includes('network'))return '網路錯誤';
+  return '同步失敗';
 }
 
 async function loadDatabaseConfig(){
@@ -520,7 +541,7 @@ async function loadDatabase(){
     setDbStatus('雲端','on');
   }catch(e){
     console.error(e);
-    setDbStatus('同步失敗','err');
+    setDbStatus(dbErrorLabel(e),'err',e.message||'同步失敗');
   }
 }
 
@@ -539,7 +560,7 @@ async function insertEntry(kind,entry){
     setDbStatus('雲端','on');
   }catch(e){
     console.error(e);
-    setDbStatus('同步失敗','err');
+    setDbStatus(dbErrorLabel(e),'err',e.message||'同步失敗');
   }
 }
 
@@ -550,7 +571,7 @@ async function deleteEntry(entry){
     setDbStatus('雲端','on');
   }catch(e){
     console.error(e);
-    setDbStatus('同步失敗','err');
+    setDbStatus(dbErrorLabel(e),'err',e.message||'同步失敗');
   }
 }
 
