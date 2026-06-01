@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>記帳與分帳</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+  :root{
+    --bg:#FAF6EF;
+    --card:#FFFFFF;
+    --ink:#2A2724;
+    --muted:#8B847A;
+    --line:#E8E1D4;
+    --terra:#C06A3A;
+    --terra-soft:#F4E5DA;
+    --teal:#3A7A6F;
+    --teal-soft:#DDEBE7;
+    --gold:#C9A227;
+    --shadow:0 1px 2px rgba(60,50,40,.04),0 8px 30px rgba(60,50,40,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Noto Sans TC',sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% 18%,rgba(192,106,58,.05),transparent 40%),radial-gradient(circle at 88% 82%,rgba(58,122,111,.05),transparent 42%);
+    min-height:100vh;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px}
+
+  header{margin-bottom:28px}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  h1{font-family:'Noto Serif TC',serif;font-weight:900;font-size:30px;letter-spacing:.5px}
+  .brand span{color:var(--muted);font-size:13px;letter-spacing:2px}
+
+  .rate-bar{
+    margin-top:16px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;
+    box-shadow:var(--shadow);flex-wrap:wrap;
+  }
+  .rate-bar label{font-size:13px;color:var(--muted);font-weight:500}
+  .rate-bar input{
+    width:110px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;
+    font-family:inherit;font-size:14px;color:var(--ink);background:#FCFAF6;
+  }
+  .rate-bar .hint{font-size:12px;color:var(--muted);margin-left:auto}
+
+  .tabs{display:flex;gap:8px;margin:22px 0 18px}
+  .tab{
+    flex:1;padding:12px;border:1px solid var(--line);background:transparent;
+    border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;color:var(--muted);
+    cursor:pointer;transition:.2s;
+  }
+  .tab.active{background:var(--ink);color:#FAF6EF;border-color:var(--ink)}
+
+  .panel{display:none}
+  .panel.active{display:block;animation:fade .35s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:20px;box-shadow:var(--shadow);margin-bottom:18px;
+  }
+  .form-grid{display:grid;grid-template-columns:1fr 110px;gap:12px}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+  .field.full{grid-column:1/-1}
+  .field label{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.5px}
+  input,select{
+    border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+    font-family:inherit;font-size:15px;color:var(--ink);background:#FCFAF6;width:100%;
+  }
+  input:focus,select:focus{outline:none;border-color:var(--terra);background:#fff}
+
+  .seg{display:flex;gap:6px}
+  .seg button{
+    flex:1;padding:10px;border:1px solid var(--line);background:#FCFAF6;border-radius:10px;
+    font-family:inherit;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;transition:.15s;
+  }
+  .seg button.on{background:var(--terra-soft);color:var(--terra);border-color:var(--terra)}
+  .seg.payer button.on{background:var(--teal-soft);color:var(--teal);border-color:var(--teal)}
+
+  .add-btn{
+    grid-column:1/-1;margin-top:4px;padding:13px;border:none;border-radius:12px;
+    background:var(--terra);color:#fff;font-family:inherit;font-size:15px;font-weight:700;
+    cursor:pointer;transition:.2s;letter-spacing:1px;
+  }
+  .add-btn:hover{background:#a85829}
+
+  .list-head{display:flex;align-items:center;justify-content:space-between;margin:24px 4px 12px}
+  .list-head h2{font-family:'Noto Serif TC',serif;font-size:18px;font-weight:700}
+  .total-chip{font-size:14px;color:var(--muted);font-weight:500}
+  .total-chip b{color:var(--ink)}
+
+  .entry{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:10px;box-shadow:var(--shadow);
+  }
+  .entry .who{
+    width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
+    font-size:20px;flex-shrink:0;
+  }
+  .who.star{background:var(--terra-soft)}
+  .who.moon{background:var(--teal-soft)}
+  .entry .info{flex:1;min-width:0}
+  .entry .note{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .entry .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .entry .amt{text-align:right;flex-shrink:0}
+  .entry .amt .twd{font-weight:700;font-size:16px;font-family:'Noto Serif TC',serif}
+  .entry .amt .orig{font-size:11px;color:var(--muted)}
+  .del{border:none;background:transparent;color:var(--muted);font-size:18px;cursor:pointer;padding:4px;line-height:1}
+  .del:hover{color:var(--terra)}
+
+  .empty{text-align:center;color:var(--muted);padding:36px 0;font-size:14px}
+
+  .settle{
+    background:linear-gradient(135deg,#2A2724,#3a352f);color:#FAF6EF;border-radius:16px;
+    padding:24px;box-shadow:var(--shadow);
+  }
+  .settle h3{font-family:'Noto Serif TC',serif;font-size:15px;font-weight:500;color:#C9BFB0;letter-spacing:1px;margin-bottom:14px}
+  .settle .result{font-size:22px;font-weight:700;line-height:1.4}
+  .settle .result .arrow{color:var(--gold);margin:0 8px}
+  .settle .result .big{font-family:'Noto Serif TC',serif;font-size:30px;font-weight:900;color:#fff}
+  .settle .balanced{font-size:18px;color:#C9BFB0}
+  .settle .breakdown{margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.12);display:flex;gap:24px;font-size:13px;color:#C9BFB0}
+  .settle .breakdown b{display:block;color:#fff;font-size:18px;font-family:'Noto Serif TC',serif;margin-top:2px}
+
+  .foot{text-align:center;color:var(--muted);font-size:11px;margin-top:30px;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><h1>記帳與分帳</h1><span>STAR ＆ MOON</span></div>
+    <div class="rate-bar">
+      <label>匯率　１ 韓元 ＝</label>
+      <input type="number" id="rate" step="0.0001" placeholder="0.0234">
+      <label>台幣</label>
+      <span class="hint">手動輸入，例如 ０.０２３４</span>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="book">記帳</button>
+    <button class="tab" data-tab="split">分帳</button>
+  </div>
+
+  <!-- 記帳 -->
+  <section class="panel active" id="panel-book">
+    <div class="card">
+      <div class="form-grid">
+        <div class="field"><label>項目</label><input id="b-note" placeholder="例如：午餐、計程車"></div>
+        <div class="field"><label>金額</label><input id="b-amt" type="number" inputmode="decimal" placeholder="0"></div>
+        <div class="field full"><label>幣別</label>
+          <div class="seg" id="b-cur">
+            <button class="on" data-cur="TWD">台幣 TWD</button>
+            <button data-cur="KRW">韓元 KRW</button>
+          </div>
+        </div>
+        <button class="add-btn" onclick="addBook()">＋ 加入記帳</button>
+      </div>
+    </div>
+    <div class="list-head"><h2>記帳明細</h2><span class="total-chip">合計　<b id="b-total">NT＄ ０</b></span></div>
+    <div id="b-list"></div>
+  </section>
+
+  <!-- 分帳 -->
+  <section class="panel" id="panel-split">
+    <div class="card">
+      <div class="form-grid">
+        <div class="field"><label>項目備註</label><input id="s-note" placeholder="這筆花費是什麼？"></div>
+        <div class="field"><label>金額</label><input id="s-amt" type="number" inputmode="decimal" placeholder="0"></div>
+        <div class="field full"><label>幣別</label>
+          <div class="seg" id="s-cur">
+            <button class="on" data-cur="TWD">台幣 TWD</button>
+            <button data-cur="KRW">韓元 KRW</button>
+          </div>
+        </div>
+        <div class="field full"><label>誰付的錢</label>
+          <div class="seg payer" id="s-payer">
+            <button class="on" data-payer="star">⭐ Star</button>
+            <button data-payer="moon">🌙 Moon</button>
+          </div>
+        </div>
+        <button class="add-btn" onclick="addSplit()">＋ 加入分帳（兩人均分）</button>
+      </div>
+    </div>
+
+    <div class="settle" id="settle"></div>
+
+    <div class="list-head"><h2>分帳明細</h2><span class="total-chip">共同支出　<b id="s-total">NT＄ ０</b></span></div>
+    <div id="s-list"></div>
+  </section>
+
+  <div class="foot">資料儲存於本機瀏覽器</div>
+</div>
+
+<script>
+const PEOPLE={star:{name:'Star',icon:'⭐',cls:'star'},moon:{name:'Moon',icon:'🌙',cls:'moon'}};
+let state=JSON.parse(localStorage.getItem('budgetApp')||'null')||{rate:'',book:[],split:[]};
+let bCur='TWD', sCur='TWD', sPayer='star';
+
+const $=id=>document.getElementById(id);
+const save=()=>localStorage.setItem('budgetApp',JSON.stringify(state));
+const rate=()=>parseFloat(state.rate)||0;
+const toTWD=(amt,cur)=>cur==='KRW'?amt*rate():amt;
+const fmt=n=>'NT＄ '+Math.round(n).toLocaleString('en-US');
+const fmtOrig=(amt,cur)=>cur==='KRW'?('₩ '+Math.round(amt).toLocaleString('en-US')):('NT＄ '+Math.round(amt).toLocaleString('en-US'));
+
+// 匯率
+$('rate').value=state.rate;
+$('rate').addEventListener('input',e=>{state.rate=e.target.value;save();renderBook();renderSplit();});
+
+// 分頁
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  $('panel-'+t.dataset.tab).classList.add('active');
+});
+
+// 幣別／付款人切換
+function bindSeg(wrapId,cb){
+  document.querySelectorAll('#'+wrapId+' button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('#'+wrapId+' button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');cb(b);
+  });
+}
+bindSeg('b-cur',b=>bCur=b.dataset.cur);
+bindSeg('s-cur',b=>sCur=b.dataset.cur);
+bindSeg('s-payer',b=>sPayer=b.dataset.payer);
+
+// 記帳
+function addBook(){
+  const note=$('b-note').value.trim(), amt=parseFloat($('b-amt').value);
+  if(!amt||amt<=0){alert('請輸入金額');return;}
+  if(bCur==='KRW'&&rate()<=0){alert('請先在上方輸入匯率');return;}
+  state.book.unshift({note:note||'未命名',amt,cur:bCur});
+  save();$('b-note').value='';$('b-amt').value='';renderBook();
+}
+function delBook(i){state.book.splice(i,1);save();renderBook();}
+
+function renderBook(){
+  const list=$('b-list');
+  if(!state.book.length){list.innerHTML='<div class="empty">還沒有記帳，從上方加入第一筆吧</div>';$('b-total').textContent=fmt(0);return;}
+  let total=0;
+  list.innerHTML=state.book.map((e,i)=>{
+    const t=toTWD(e.amt,e.cur);total+=t;
+    return `<div class="entry"><div class="who ${e.cur==='KRW'?'moon':'star'}">${e.cur==='KRW'?'₩':'＄'}</div>
+      <div class="info"><div class="note">${esc(e.note)}</div><div class="sub">${e.cur}</div></div>
+      <div class="amt"><div class="twd">${fmt(t)}</div><div class="orig">${fmtOrig(e.amt,e.cur)}</div></div>
+      <button class="del" onclick="delBook(${i})">✕</button></div>`;
+  }).join('');
+  $('b-total').textContent=fmt(total);
+}
+
+// 分帳
+function addSplit(){
+  const note=$('s-note').value.trim(), amt=parseFloat($('s-amt').value);
+  if(!amt||amt<=0){alert('請輸入金額');return;}
+  if(sCur==='KRW'&&rate()<=0){alert('請先在上方輸入匯率');return;}
+  state.split.unshift({note:note||'未命名',amt,cur:sCur,payer:sPayer});
+  save();$('s-note').value='';$('s-amt').value='';renderSplit();
+}
+function delSplit(i){state.split.splice(i,1);save();renderSplit();}
+
+function renderSplit(){
+  const list=$('s-list');
+  let total=0, paid={star:0,moon:0};
+  state.split.forEach(e=>{const t=toTWD(e.amt,e.cur);total+=t;paid[e.payer]+=t;});
+
+  if(!state.split.length){list.innerHTML='<div class="empty">還沒有分帳，從上方加入第一筆吧</div>';}
+  else{
+    list.innerHTML=state.split.map((e,i)=>{
+      const t=toTWD(e.amt,e.cur),p=PEOPLE[e.payer];
+      return `<div class="entry"><div class="who ${p.cls}">${p.icon}</div>
+        <div class="info"><div class="note">${esc(e.note)}</div><div class="sub">${p.name} 付　·　均分 ${fmt(t/2)}／人</div></div>
+        <div class="amt"><div class="twd">${fmt(t)}</div><div class="orig">${fmtOrig(e.amt,e.cur)}</div></div>
+        <button class="del" onclick="delSplit(${i})">✕</button></div>`;
+    }).join('');
+  }
+  $('s-total').textContent=fmt(total);
+
+  // 結算：兩人均分，每人應負擔 total/2
+  const share=total/2;
+  const starNet=paid.star-share; // 正＝多付了，要被還
+  const box=$('settle');
+  let html='<h3>結算結果（兩人均分）</h3>';
+  if(total===0){
+    html+='<div class="balanced">尚無分帳資料</div>';
+  }else if(Math.abs(starNet)<0.5){
+    html+='<div class="balanced">兩人剛好平衡，誰都不用給 🎉</div>';
+  }else{
+    const from=starNet<0?PEOPLE.star:PEOPLE.moon;
+    const to=starNet<0?PEOPLE.moon:PEOPLE.star;
+    html+=`<div class="result">${from.icon} ${from.name}<span class="arrow">應給→</span>${to.icon} ${to.name}<br><span class="big">${fmt(Math.abs(starNet))}</span></div>`;
+  }
+  html+=`<div class="breakdown"><div>⭐ Star 已付<b>${fmt(paid.star)}</b></div><div>🌙 Moon 已付<b>${fmt(paid.moon)}</b></div><div>每人應分擔<b>${fmt(share)}</b></div></div>`;
+  box.innerHTML=html;
+}
+
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+renderBook();renderSplit();
+</script>
+</body>
+</html>
