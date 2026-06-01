@@ -456,6 +456,19 @@ function setDbStatus(text,kind='idle'){
   $('foot').textContent=dbReady()?'資料同步至 Supabase':'資料儲存於本機瀏覽器';
 }
 
+async function loadDatabaseConfig(){
+  if(dbReady())return;
+  try{
+    const config=await getJSON('/api/config?t='+Date.now());
+    if(config&&config.configured){
+      DB.url=config.supabaseUrl;
+      DB.anonKey=config.supabaseAnonKey;
+    }
+  }catch(e){
+    // Local static preview has no Vercel API route, so it simply stays in local mode.
+  }
+}
+
 function migrateIds(){
   ['book','split'].forEach(kind=>{
     state[kind].forEach(e=>{
@@ -561,11 +574,16 @@ function saveRate(){
     }
   },450);
 }
-migrateIds();
-setDbStatus(dbReady()?'連線準備中':'本機模式（Supabase 未設定）',dbReady()?'on':'idle');
-if(dbReady())loadDatabase();
-fetchLatestRate(false);
-renderBook();renderSplit();
+async function initApp(){
+  migrateIds();
+  renderBook();renderSplit();
+  fetchLatestRate(false);
+  setDbStatus('連線設定中...');
+  await loadDatabaseConfig();
+  setDbStatus(dbReady()?'連線準備中':'本機模式（Supabase 未設定）',dbReady()?'on':'idle');
+  if(dbReady())loadDatabase();
+}
+initApp();
 </script>
 </body>
 </html>
