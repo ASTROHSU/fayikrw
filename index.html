@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>記帳與分帳</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
@@ -237,7 +237,7 @@
     <div id="s-list"></div>
   </section>
 
-  <div class="foot" id="foot">資料儲存於本機瀏覽器</div>
+  <div class="foot" id="foot">Made with ❤️ by MN</div>
 </div>
 
 <script>
@@ -449,7 +449,7 @@ function setDbStatus(text,kind='idle',detail=''){
   $('db-status-text').textContent=text;
   $('db-dot').className='status-dot'+(kind==='on'?' on':kind==='err'?' err':'');
   $('db-status').title=detail||text;
-  $('foot').textContent=dbReady()?'資料同步至 Supabase':'資料儲存於本機瀏覽器';
+  $('foot').textContent='Made with ❤️ by MN';
 }
 
 function dbErrorLabel(error){
