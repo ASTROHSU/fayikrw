@@ -47,8 +47,9 @@
 
   .rate-bar{
     margin-top:16px;background:var(--card);border:1px solid var(--line);
-    border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;
-    box-shadow:var(--shadow);flex-wrap:wrap;
+    border-radius:14px;padding:12px 16px;display:grid;
+    grid-template-columns:auto minmax(140px,1fr);align-items:center;gap:8px 10px;
+    box-shadow:var(--shadow);
   }
   .rate-bar label{font-size:13px;color:var(--muted);font-weight:500}
   .rate-bar input{
@@ -56,10 +57,10 @@
     font-family:inherit;font-size:16px;color:var(--ink);background:#FCFAF6;
   }
   .converter-result{
-    margin-left:auto;font-family:'Noto Serif TC',serif;font-size:20px;font-weight:900;
+    grid-column:1/-1;font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;
     color:var(--terra);white-space:nowrap;
   }
-  .rate-bar .hint{font-size:12px;color:var(--muted);margin-left:auto}
+  .rate-bar .hint{grid-column:1/-1;font-size:12px;color:var(--muted)}
 
   .tabs{display:flex;gap:8px;margin:22px 0 18px}
   .tab{
@@ -148,13 +149,10 @@
     h1{font-size:26px}
     .brand span{font-size:12px;letter-spacing:1.5px}
     .status-pill{margin-left:0;padding:5px 8px}
-    .rate-bar{
-      display:grid;grid-template-columns:auto minmax(120px,1fr);
-      gap:8px 8px;padding:12px;
-    }
+    .rate-bar{grid-template-columns:auto minmax(120px,1fr);gap:8px 8px;padding:12px}
     .rate-bar input{width:100%;min-width:0}
-    .converter-result{grid-column:1/-1;margin-left:0}
-    .rate-bar .hint{grid-column:1/-1;margin-left:0;line-height:1.4}
+    .converter-result{font-size:24px}
+    .rate-bar .hint{line-height:1.4}
     .tabs{margin:18px 0 14px}
     .tab{padding:11px 8px}
     .card{padding:16px;border-radius:12px}
