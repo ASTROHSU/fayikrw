@@ -190,10 +190,16 @@
     <div class="card">
       <div class="form-grid">
         <div class="converter-field">
-          <label for="krw-converter">韓元金額</label>
-          <input type="number" id="krw-converter" inputmode="decimal" placeholder="輸入韓元">
+          <label for="krw-converter" id="book-amount-label">韓元金額</label>
+          <input type="number" id="krw-converter" inputmode="decimal" placeholder="輸入金額">
           <div class="converter-result" id="twd-converter">NT＄ 0</div>
           <span class="hint" id="rate-hint">自動抓取最新匯率</span>
+        </div>
+        <div class="field full"><label>幣別</label>
+          <div class="seg" id="b-cur">
+            <button class="on" data-cur="KRW">韓元 KRW</button>
+            <button data-cur="TWD">台幣 TWD</button>
+          </div>
         </div>
         <div class="field full"><label>項目</label><input id="b-note" placeholder="例如：午餐、計程車"></div>
         <button class="add-btn" onclick="addBook()">＋ 加入記帳</button>
@@ -215,7 +221,7 @@
             <button data-cur="KRW">韓元 KRW</button>
           </div>
         </div>
-        <div class="field full"><label>誰付的錢</label>
+        <div class="field full"><label>記在誰頭上（誰付的錢）</label>
           <div class="seg payer" id="s-payer">
             <button class="on" data-payer="star">⭐ Star</button>
             <button data-payer="moon">🌙 Moon</button>
@@ -237,7 +243,7 @@
 <script>
 const PEOPLE={star:{name:'Star',icon:'⭐',cls:'star'},moon:{name:'Moon',icon:'🌙',cls:'moon'}};
 let state=JSON.parse(localStorage.getItem('budgetApp')||'null')||{rate:'',book:[],split:[]};
-let sCur='TWD', sPayer='star';
+let bCur='KRW', sCur='TWD', sPayer='star';
 const DB={
   url:'',
   anonKey:'',
@@ -254,7 +260,7 @@ const fmt=n=>'NT＄ '+Math.round(n).toLocaleString('en-US');
 const fmtOrig=(amt,cur)=>cur==='KRW'?('₩ '+Math.round(amt).toLocaleString('en-US')):('NT＄ '+Math.round(amt).toLocaleString('en-US'));
 const nowText=()=>new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
-// 韓元換台幣
+// 記帳金額換算
 $('krw-converter').value=localStorage.getItem('krwConverter')||'';
 $('krw-converter').addEventListener('input',e=>{
   localStorage.setItem('krwConverter',e.target.value);
@@ -276,15 +282,16 @@ function bindSeg(wrapId,cb){
     b.classList.add('on');cb(b);
   });
 }
+bindSeg('b-cur',b=>{bCur=b.dataset.cur;renderConverter();});
 bindSeg('s-cur',b=>sCur=b.dataset.cur);
 bindSeg('s-payer',b=>sPayer=b.dataset.payer);
 
 // 記帳
 function addBook(){
   const note=$('b-note').value.trim(), amt=parseFloat($('krw-converter').value);
-  if(!amt||amt<=0){alert('請輸入韓元金額');return;}
-  if(rate()<=0){alert('匯率更新中，請稍後再試');return;}
-  const entry={id:makeId(),note:note||'未命名',amt,cur:'KRW',createdAt:new Date().toISOString()};
+  if(!amt||amt<=0){alert('請輸入金額');return;}
+  if(bCur==='KRW'&&rate()<=0){alert('匯率更新中，請稍後再試');return;}
+  const entry={id:makeId(),note:note||'未命名',amt,cur:bCur,createdAt:new Date().toISOString()};
   state.book.unshift(entry);
   save();
   $('b-note').value='';
@@ -417,8 +424,9 @@ function setRateHint(text,kind='idle'){
 }
 
 function renderConverter(){
-  const krw=parseFloat($('krw-converter').value)||0;
-  $('twd-converter').textContent=fmt(krw*rate());
+  const amt=parseFloat($('krw-converter').value)||0;
+  $('book-amount-label').textContent=bCur==='KRW'?'韓元金額':'台幣金額';
+  $('twd-converter').textContent=fmt(toTWD(amt,bCur));
 }
 
 async function fetchLatestRate(){
