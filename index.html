@@ -47,7 +47,27 @@
     width:110px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;
     font-family:inherit;font-size:14px;color:var(--ink);background:#FCFAF6;
   }
+  .rate-btn{
+    border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:#FCFAF6;
+    color:var(--ink);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
+  }
+  .rate-btn:hover{border-color:var(--terra);color:var(--terra)}
   .rate-bar .hint{font-size:12px;color:var(--muted);margin-left:auto}
+
+  .db-bar{
+    margin-top:10px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:12px 16px;display:flex;
+    gap:10px;align-items:center;justify-content:space-between;box-shadow:var(--shadow);flex-wrap:wrap;
+  }
+  .db-status{color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px;min-height:18px}
+  .db-btn{
+    border:1px solid var(--line);border-radius:10px;padding:8px 11px;background:#FCFAF6;
+    color:var(--ink);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;
+  }
+  .db-btn:hover{border-color:var(--teal);color:var(--teal)}
+  .db-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block}
+  .db-dot.on{background:var(--teal)}
+  .db-dot.err{background:var(--terra)}
 
   .tabs{display:flex;gap:8px;margin:22px 0 18px}
   .tab{
@@ -129,6 +149,8 @@
   .settle .breakdown b{display:block;color:#fff;font-size:18px;font-family:'Noto Serif TC',serif;margin-top:2px}
 
   .foot{text-align:center;color:var(--muted);font-size:11px;margin-top:30px;letter-spacing:1px}
+
+  @media (max-width:620px){.db-bar{align-items:flex-start;flex-direction:column}.db-btn{width:100%}}
 </style>
 </head>
 <body>
@@ -139,7 +161,12 @@
       <label>匯率　１ 韓元 ＝</label>
       <input type="number" id="rate" step="0.0001" placeholder="0.0234">
       <label>台幣</label>
-      <span class="hint">手動輸入，例如 ０.０２３４</span>
+      <button class="rate-btn" onclick="fetchLatestRate(true)">更新匯率</button>
+      <span class="hint" id="rate-hint">自動抓取最新匯率</span>
+    </div>
+    <div class="db-bar">
+      <div class="db-status"><span class="db-dot" id="db-dot"></span><span id="db-status">本機模式</span></div>
+      <button class="db-btn" onclick="loadDatabase()">重新整理</button>
     </div>
   </header>
 
@@ -195,13 +222,20 @@
     <div id="s-list"></div>
   </section>
 
-  <div class="foot">資料儲存於本機瀏覽器</div>
+  <div class="foot" id="foot">資料儲存於本機瀏覽器</div>
 </div>
 
 <script>
 const PEOPLE={star:{name:'Star',icon:'⭐',cls:'star'},moon:{name:'Moon',icon:'🌙',cls:'moon'}};
 let state=JSON.parse(localStorage.getItem('budgetApp')||'null')||{rate:'',book:[],split:[]};
 let bCur='TWD', sCur='TWD', sPayer='star';
+const DB={
+  url:'',
+  anonKey:'',
+  entriesTable:'fayikrw_entries',
+  settingsTable:'fayikrw_settings'
+};
+const RATE_API='https://fxapi.app/api/KRW/TWD.json';
 
 const $=id=>document.getElementById(id);
 const save=()=>localStorage.setItem('budgetApp',JSON.stringify(state));
@@ -209,10 +243,11 @@ const rate=()=>parseFloat(state.rate)||0;
 const toTWD=(amt,cur)=>cur==='KRW'?amt*rate():amt;
 const fmt=n=>'NT＄ '+Math.round(n).toLocaleString('en-US');
 const fmtOrig=(amt,cur)=>cur==='KRW'?('₩ '+Math.round(amt).toLocaleString('en-US')):('NT＄ '+Math.round(amt).toLocaleString('en-US'));
+const nowText=()=>new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
 // 匯率
 $('rate').value=state.rate;
-$('rate').addEventListener('input',e=>{state.rate=e.target.value;save();renderBook();renderSplit();});
+$('rate').addEventListener('input',e=>{state.rate=e.target.value;save();saveRate();renderBook();renderSplit();});
 
 // 分頁
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
@@ -238,10 +273,12 @@ function addBook(){
   const note=$('b-note').value.trim(), amt=parseFloat($('b-amt').value);
   if(!amt||amt<=0){alert('請輸入金額');return;}
   if(bCur==='KRW'&&rate()<=0){alert('請先在上方輸入匯率');return;}
-  state.book.unshift({note:note||'未命名',amt,cur:bCur});
+  const entry={id:makeId(),note:note||'未命名',amt,cur:bCur,createdAt:new Date().toISOString()};
+  state.book.unshift(entry);
   save();$('b-note').value='';$('b-amt').value='';renderBook();
+  insertEntry('book',entry);
 }
-function delBook(i){state.book.splice(i,1);save();renderBook();}
+function delBook(i){const [entry]=state.book.splice(i,1);save();renderBook();deleteEntry(entry);}
 
 function renderBook(){
   const list=$('b-list');
@@ -262,10 +299,12 @@ function addSplit(){
   const note=$('s-note').value.trim(), amt=parseFloat($('s-amt').value);
   if(!amt||amt<=0){alert('請輸入金額');return;}
   if(sCur==='KRW'&&rate()<=0){alert('請先在上方輸入匯率');return;}
-  state.split.unshift({note:note||'未命名',amt,cur:sCur,payer:sPayer});
+  const entry={id:makeId(),note:note||'未命名',amt,cur:sCur,payer:sPayer,createdAt:new Date().toISOString()};
+  state.split.unshift(entry);
   save();$('s-note').value='';$('s-amt').value='';renderSplit();
+  insertEntry('split',entry);
 }
-function delSplit(i){state.split.splice(i,1);save();renderSplit();}
+function delSplit(i){const [entry]=state.split.splice(i,1);save();renderSplit();deleteEntry(entry);}
 
 function renderSplit(){
   const list=$('s-list');
@@ -304,6 +343,189 @@ function renderSplit(){
 
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
+function makeId(){
+  return Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+}
+
+function dbReady(){
+  return Boolean(DB.url&&DB.anonKey);
+}
+
+function dbHeaders(extra={}){
+  return Object.assign({
+    apikey:DB.anonKey,
+    Authorization:'Bearer '+DB.anonKey,
+    'Content-Type':'application/json'
+  },extra);
+}
+
+function dbRequest(method,path,data,extraHeaders={}){
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open(method,DB.url.replace(/\/$/,'')+'/rest/v1/'+path,true);
+    const headers=dbHeaders(extraHeaders);
+    Object.keys(headers).forEach(k=>xhr.setRequestHeader(k,headers[k]));
+    xhr.onload=()=>{
+      if(xhr.status<200||xhr.status>=300){reject(new Error('HTTP '+xhr.status));return;}
+      let body=null;
+      try{body=xhr.responseText?JSON.parse(xhr.responseText):null;}catch(e){body=null;}
+      resolve(body);
+    };
+    xhr.onerror=()=>reject(new Error('network failed'));
+    xhr.send(data?JSON.stringify(data):null);
+  });
+}
+
+function getJSON(url){
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open('GET',url,true);
+    xhr.onload=()=>{
+      if(xhr.status<200||xhr.status>=300){reject(new Error('HTTP '+xhr.status));return;}
+      try{resolve(JSON.parse(xhr.responseText));}catch(e){reject(e);}
+    };
+    xhr.onerror=()=>reject(new Error('network failed'));
+    xhr.send();
+  });
+}
+
+function setRateHint(text,kind='idle'){
+  $('rate-hint').textContent=text;
+  $('rate-hint').style.color=kind==='err'?'var(--terra)':'var(--muted)';
+}
+
+async function fetchLatestRate(showStatus=false){
+  if(showStatus)setRateHint('更新中...');
+  try{
+    const data=await getJSON(RATE_API+'?t='+Date.now());
+    const latest=Number(data&&data.rate);
+    if(!latest||latest<=0)throw new Error('invalid rate');
+    state.rate=latest.toFixed(6);
+    $('rate').value=state.rate;
+    save();saveRate();renderBook();renderSplit();
+    const time=data.timestamp?new Date(data.timestamp).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):nowText();
+    setRateHint('已更新 '+time);
+  }catch(e){
+    console.error(e);
+    setRateHint(state.rate?'匯率更新失敗，沿用目前數值':'匯率更新失敗，請稍後重試','err');
+  }
+}
+
+function setDbStatus(text,kind='idle'){
+  $('db-status').textContent=text;
+  $('db-dot').className='db-dot'+(kind==='on'?' on':kind==='err'?' err':'');
+  $('foot').textContent=dbReady()?'資料同步至 Supabase':'資料儲存於本機瀏覽器';
+}
+
+function migrateIds(){
+  ['book','split'].forEach(kind=>{
+    state[kind].forEach(e=>{
+      if(!e.id)e.id=makeId();
+      if(!e.createdAt)e.createdAt=new Date().toISOString();
+    });
+  });
+  save();
+}
+
+function toDbRow(kind,e){
+  return {
+    id:e.id,
+    kind,
+    note:e.note,
+    amount:e.amt,
+    currency:e.cur,
+    payer:kind==='split'?e.payer:null,
+    created_at:e.createdAt||new Date().toISOString()
+  };
+}
+
+function fromDbRow(row){
+  return {
+    id:row.id,
+    note:row.note||'未命名',
+    amt:Number(row.amount)||0,
+    cur:row.currency||'TWD',
+    payer:row.payer||'star',
+    createdAt:row.created_at||new Date().toISOString()
+  };
+}
+
+async function loadDatabase(){
+  if(!dbReady()){
+    setDbStatus('本機模式（Supabase 未設定）','idle');
+    return;
+  }
+  setDbStatus('讀取資料庫中...');
+  try{
+    const localState={rate:state.rate,book:[...state.book],split:[...state.split]};
+    const rows=await dbRequest('GET',DB.entriesTable+'?select=*&order=created_at.desc');
+    if(!rows.length&&(localState.book.length||localState.split.length)){
+      state=localState;
+      await uploadLocalState();
+      setDbStatus('已上傳本機資料 '+nowText(),'on');
+      return;
+    }
+    state.book=rows.filter(r=>r.kind==='book').map(fromDbRow);
+    state.split=rows.filter(r=>r.kind==='split').map(fromDbRow);
+    save();
+    $('rate').value=state.rate;
+    renderBook();renderSplit();
+    setDbStatus('已同步 Supabase '+nowText(),'on');
+  }catch(e){
+    console.error(e);
+    setDbStatus('資料庫讀取失敗','err');
+  }
+}
+
+async function uploadLocalState(){
+  const all=[
+    ...state.book.map(e=>['book',e]),
+    ...state.split.map(e=>['split',e])
+  ];
+  await Promise.all(all.map(([kind,e])=>dbRequest('POST',DB.entriesTable,toDbRow(kind,e),{Prefer:'resolution=merge-duplicates,return=minimal'})));
+  await dbRequest('POST',DB.settingsTable,{key:'rate',value:state.rate},{Prefer:'resolution=merge-duplicates,return=minimal'});
+}
+
+async function insertEntry(kind,entry){
+  if(!dbReady())return;
+  try{
+    await dbRequest('POST',DB.entriesTable,toDbRow(kind,entry),{Prefer:'return=minimal'});
+    setDbStatus('已寫入 Supabase '+nowText(),'on');
+  }catch(e){
+    console.error(e);
+    setDbStatus('寫入資料庫失敗','err');
+  }
+}
+
+async function deleteEntry(entry){
+  if(!dbReady()||!entry||!entry.id)return;
+  try{
+    await dbRequest('DELETE',DB.entriesTable+'?id=eq.'+encodeURIComponent(entry.id),null,{Prefer:'return=minimal'});
+    setDbStatus('已從 Supabase 刪除 '+nowText(),'on');
+  }catch(e){
+    console.error(e);
+    setDbStatus('刪除資料庫資料失敗','err');
+  }
+}
+
+let rateTimer=null;
+function saveRate(){
+  if(!dbReady())return;
+  clearTimeout(rateTimer);
+  rateTimer=setTimeout(async()=>{
+    try{
+      await dbRequest('POST',DB.settingsTable,{key:'rate',value:state.rate},{Prefer:'resolution=merge-duplicates,return=minimal'});
+      setDbStatus('已更新匯率 '+nowText(),'on');
+    }catch(e){
+      console.error(e);
+      setDbStatus('匯率寫入失敗','err');
+    }
+  },450);
+}
+migrateIds();
+setDbStatus(dbReady()?'連線準備中':'本機模式（Supabase 未設定）',dbReady()?'on':'idle');
+if(dbReady())loadDatabase();
+fetchLatestRate(false);
 renderBook();renderSplit();
 </script>
 </body>
