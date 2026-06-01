@@ -45,22 +45,13 @@
   .status-dot.on{background:var(--teal)}
   .status-dot.err{background:var(--terra)}
 
-  .rate-bar{
-    margin-top:16px;background:var(--card);border:1px solid var(--line);
-    border-radius:14px;padding:12px 16px;display:grid;
-    grid-template-columns:auto minmax(140px,1fr);align-items:center;gap:8px 10px;
-    box-shadow:var(--shadow);
-  }
-  .rate-bar label{font-size:13px;color:var(--muted);font-weight:500}
-  .rate-bar input{
-    width:150px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;
-    font-family:inherit;font-size:16px;color:var(--ink);background:#FCFAF6;
-  }
+  .converter-field{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(140px,1fr);gap:8px 10px;align-items:center;margin-bottom:12px}
+  .converter-field label{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.5px}
   .converter-result{
     grid-column:1/-1;font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;
     color:var(--terra);white-space:nowrap;
   }
-  .rate-bar .hint{grid-column:1/-1;font-size:12px;color:var(--muted)}
+  .converter-field .hint{grid-column:1/-1;font-size:12px;color:var(--muted)}
 
   .tabs{display:flex;gap:8px;margin:22px 0 18px}
   .tab{
@@ -149,10 +140,9 @@
     h1{font-size:26px}
     .brand span{font-size:12px;letter-spacing:1.5px}
     .status-pill{margin-left:0;padding:5px 8px}
-    .rate-bar{grid-template-columns:auto minmax(120px,1fr);gap:8px 8px;padding:12px}
-    .rate-bar input{width:100%;min-width:0}
+    .converter-field{grid-template-columns:1fr;gap:6px;margin-bottom:10px}
     .converter-result{font-size:24px}
-    .rate-bar .hint{line-height:1.4}
+    .converter-field .hint{line-height:1.4}
     .tabs{margin:18px 0 14px}
     .tab{padding:11px 8px}
     .card{padding:16px;border-radius:12px}
@@ -188,12 +178,6 @@
       <h1>記帳與分帳</h1><span>STAR ＆ MOON</span>
       <div class="status-pill" id="db-status"><span class="status-dot" id="db-dot"></span><span id="db-status-text">本機</span></div>
     </div>
-    <div class="rate-bar">
-      <label>韓元</label>
-      <input type="number" id="krw-converter" inputmode="decimal" placeholder="輸入金額">
-      <div class="converter-result" id="twd-converter">NT＄ 0</div>
-      <span class="hint" id="rate-hint">自動抓取最新匯率</span>
-    </div>
   </header>
 
   <div class="tabs">
@@ -205,14 +189,13 @@
   <section class="panel active" id="panel-book">
     <div class="card">
       <div class="form-grid">
-        <div class="field"><label>項目</label><input id="b-note" placeholder="例如：午餐、計程車"></div>
-        <div class="field"><label>金額</label><input id="b-amt" type="number" inputmode="decimal" placeholder="0"></div>
-        <div class="field full"><label>幣別</label>
-          <div class="seg" id="b-cur">
-            <button class="on" data-cur="TWD">台幣 TWD</button>
-            <button data-cur="KRW">韓元 KRW</button>
-          </div>
+        <div class="converter-field">
+          <label for="krw-converter">韓元金額</label>
+          <input type="number" id="krw-converter" inputmode="decimal" placeholder="輸入韓元">
+          <div class="converter-result" id="twd-converter">NT＄ 0</div>
+          <span class="hint" id="rate-hint">自動抓取最新匯率</span>
         </div>
+        <div class="field full"><label>項目</label><input id="b-note" placeholder="例如：午餐、計程車"></div>
         <button class="add-btn" onclick="addBook()">＋ 加入記帳</button>
       </div>
     </div>
@@ -254,7 +237,7 @@
 <script>
 const PEOPLE={star:{name:'Star',icon:'⭐',cls:'star'},moon:{name:'Moon',icon:'🌙',cls:'moon'}};
 let state=JSON.parse(localStorage.getItem('budgetApp')||'null')||{rate:'',book:[],split:[]};
-let bCur='TWD', sCur='TWD', sPayer='star';
+let sCur='TWD', sPayer='star';
 const DB={
   url:'',
   anonKey:'',
@@ -293,18 +276,21 @@ function bindSeg(wrapId,cb){
     b.classList.add('on');cb(b);
   });
 }
-bindSeg('b-cur',b=>bCur=b.dataset.cur);
 bindSeg('s-cur',b=>sCur=b.dataset.cur);
 bindSeg('s-payer',b=>sPayer=b.dataset.payer);
 
 // 記帳
 function addBook(){
-  const note=$('b-note').value.trim(), amt=parseFloat($('b-amt').value);
-  if(!amt||amt<=0){alert('請輸入金額');return;}
-  if(bCur==='KRW'&&rate()<=0){alert('請先在上方輸入匯率');return;}
-  const entry={id:makeId(),note:note||'未命名',amt,cur:bCur,createdAt:new Date().toISOString()};
+  const note=$('b-note').value.trim(), amt=parseFloat($('krw-converter').value);
+  if(!amt||amt<=0){alert('請輸入韓元金額');return;}
+  if(rate()<=0){alert('匯率更新中，請稍後再試');return;}
+  const entry={id:makeId(),note:note||'未命名',amt,cur:'KRW',createdAt:new Date().toISOString()};
   state.book.unshift(entry);
-  save();$('b-note').value='';$('b-amt').value='';renderBook();
+  save();
+  $('b-note').value='';
+  $('krw-converter').value='';
+  localStorage.removeItem('krwConverter');
+  renderBook();renderConverter();
   insertEntry('book',entry);
 }
 function delBook(i){const [entry]=state.book.splice(i,1);save();renderBook();deleteEntry(entry);}
