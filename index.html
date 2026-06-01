@@ -151,6 +151,45 @@
   .foot{text-align:center;color:var(--muted);font-size:11px;margin-top:30px;letter-spacing:1px}
 
   @media (max-width:620px){.db-bar{align-items:flex-start;flex-direction:column}.db-btn{width:100%}}
+  @media (max-width:420px){
+    .wrap{padding:24px 14px 64px}
+    header{margin-bottom:20px}
+    h1{font-size:26px}
+    .brand span{font-size:12px;letter-spacing:1.5px}
+    .rate-bar{
+      display:grid;grid-template-columns:auto minmax(92px,1fr) auto;
+      gap:8px 8px;padding:12px;
+    }
+    .rate-bar input{width:100%;min-width:0}
+    .rate-btn{grid-column:1/-1;width:100%;padding:9px 10px}
+    .rate-bar .hint{grid-column:1/-1;margin-left:0;line-height:1.4}
+    .db-bar{padding:12px}
+    .tabs{margin:18px 0 14px}
+    .tab{padding:11px 8px}
+    .card{padding:16px;border-radius:12px}
+    .form-grid{grid-template-columns:1fr;gap:8px}
+    .field{margin-bottom:8px}
+    .list-head{align-items:flex-start;gap:4px;flex-direction:column;margin-top:20px}
+    .entry{padding:12px;gap:9px;align-items:flex-start}
+    .entry .who{width:34px;height:34px;font-size:17px}
+    .entry .amt{max-width:96px}
+    .entry .amt .twd{font-size:14px;line-height:1.25}
+    .entry .amt .orig{line-height:1.25}
+    .del{padding:0 2px}
+    .settle{padding:18px;border-radius:12px}
+    .settle .result{font-size:18px}
+    .settle .result .arrow{display:inline-block;margin:0 4px}
+    .settle .result .big{font-size:25px}
+    .settle .breakdown{display:grid;grid-template-columns:1fr;gap:10px}
+    .settle .breakdown b{font-size:17px}
+  }
+  @media (max-width:340px){
+    .wrap{padding-left:10px;padding-right:10px}
+    h1{font-size:24px}
+    .entry .amt{max-width:84px}
+    .seg{gap:5px}
+    .seg button{font-size:13px;padding:9px 6px}
+  }
 </style>
 </head>
 <body>
